@@ -46,7 +46,7 @@ function App() {
     }
     setLoadingGenerate(true);
     try {
-      const response = await fetch('http://127.0.0.1:8000/generate-aptamers', {
+      const response = await fetch('https://aptamer-tool-backend.onrender.com/generate-aptamers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fasta_sequence: fastaInput, num_aptamers: 10 })
@@ -72,7 +72,7 @@ function App() {
     }
     setLoadingMutate(true);
     try {
-      const response = await fetch('http://127.0.0.1:8000/mutate-aptamer', {
+      const response = await fetch('https://aptamer-tool-backend.onrender.com/mutate-aptamer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ aptamer: aptamerInput, num_mutations: 10 })
@@ -212,7 +212,7 @@ function App() {
     setSvgLoading(true);
     setSvgModalOpen(true);
     try {
-      const response = await fetch("http://127.0.0.1:8000/plot-structure", {
+      const response = await fetch("https://aptamer-tool-backend.onrender.com/plot-structure", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -602,4 +602,3 @@ function App() {
 }
 
 export default App;
-
