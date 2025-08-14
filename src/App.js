@@ -8,7 +8,7 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import About from './About';
 import Footer from './Footer';
 import Advanced from './Advanced';
-import logo from './PAWSLOGO.png'; // Adjust filename if needed
+import logo from './PAWSLOGO.png';
 
 // ✅ Use Netlify Environment Variable
 const API_BASE = process.env.REACT_APP_API_URL;
@@ -21,7 +21,7 @@ function App() {
   // Aptamers data and loading
   const [generatedAptamers, setGeneratedAptamers] = useState([]);
   const [mutatedAptamers, setMutatedAptamers] = useState([]);
-  // const [loadingGenerate, setLoadingGenerate] = useState(false);
+  const [loadingGenerate, setLoadingGenerate] = useState(false);
   const [loadingMutate, setLoadingMutate] = useState(false);
 
   // Dark mode toggle
@@ -41,7 +41,6 @@ function App() {
   const [svgLoading, setSvgLoading] = useState(false);
 
   // --- API Calls ---
-
   const generateAptamers = async () => {
     if (!fastaInput.trim()) {
       toast.error("Please enter a FASTA sequence.");
@@ -54,9 +53,7 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fasta_sequence: fastaInput, num_aptamers: 10 })
       });
-      if (!response.ok) {
-        throw new Error(`Server error: ${response.statusText}`);
-      }
+      if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
       const data = await response.json();
       setGeneratedAptamers(data.aptamers || []);
       toast.success(`${data.aptamers.length} aptamers generated ✅`);
@@ -80,9 +77,7 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ aptamer: aptamerInput, num_mutations: 10 })
       });
-      if (!response.ok) {
-        throw new Error(`Server error: ${response.statusText}`);
-      }
+      if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
       const data = await response.json();
       setMutatedAptamers(data.mutations || []);
       toast.success(`${data.mutations.length} mutations created ✅`);
@@ -94,8 +89,7 @@ function App() {
     }
   };
 
-  // --- Helpers to copy and download data ---
-
+  // --- Helpers ---
   const formatForExcel = (data) => {
     let rows = ['#\tSequence\tLength\tGC %\tStructure\tMFE (kcal/mol)\tTm\tKd (nM)'];
     data.forEach((apt, idx) => {
@@ -120,7 +114,7 @@ function App() {
       link.href = URL.createObjectURL(blob);
       link.download = filename;
       link.click();
-    } catch (e) {
+    } catch {
       toast.error("Failed to download file");
     }
   };
@@ -156,7 +150,7 @@ function App() {
       sequence: 'string',
     };
     const type = typeMap[key] || 'string';
-    const sorted = [...aptamers].sort((a, b) => {
+    return [...aptamers].sort((a, b) => {
       const aVal = parseSortableValue(a[key], type);
       const bVal = parseSortableValue(b[key], type);
       if (isNaN(aVal) && !isNaN(bVal)) return 1;
@@ -169,7 +163,6 @@ function App() {
       if (aVal > bVal) return order === 'asc' ? 1 : -1;
       return 0;
     });
-    return sorted;
   };
 
   const onGenSortChange = (field) => {
@@ -213,9 +206,8 @@ function App() {
         setSvgContent(`<p style="color:red; padding: 1rem">${errorText}</p>`);
         return;
       }
-      const svgText = await response.text();
-      setSvgContent(svgText);
-    } catch (error) {
+      setSvgContent(await response.text());
+    } catch {
       toast.error("Error fetching structure visualization.");
       setSvgContent(`<p style="color:red; padding: 1rem">Error fetching structure visualization.</p>`);
     }
@@ -266,7 +258,7 @@ function App() {
         </nav>
         <div style={{ textAlign: 'center', marginTop: 18 }}>
           <img src={logo} alt="PAWS Web Tool Logo" style={{ width: 80, height: 80, borderRadius: '50%', boxShadow: '0 2px 12px rgba(0,0,0,0.1)' }} />
-          <h1 style={{ margin: '0.4em 0 0.2em 0', fontWeight: 'bold', fontSize: '2.2em', letterSpacing: '0.01em' }}>
+          <h1 style={{ margin: '0.4em 0 0.2em 0', fontWeight: 'bold', fontSize: '2.2em' }}>
             PAWS Web Tool
           </h1>
           <div style={{ fontSize: '1.1em', fontWeight: 500, color: '#0c56d1', marginBottom: 9 }}>
@@ -275,13 +267,7 @@ function App() {
         </div>
 
         <Routes>
-          <Route path="/" element={
-            <main>
-              {/* The main UI remains the same */}
-              {/* --- Existing Generate & Mutate UI goes here --- */}
-              {/* (Omitted here for brevity since only URL handling changed) */}
-            </main>
-          } />
+          <Route path="/" element={<main>{/* Main UI here */}</main>} />
           <Route path="/advanced" element={<Advanced />} />
           <Route path="/about" element={<About />} />
         </Routes>
