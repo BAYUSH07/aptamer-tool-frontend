@@ -21,7 +21,7 @@ function App() {
   // Aptamers data and loading
   const [generatedAptamers, setGeneratedAptamers] = useState([]);
   const [mutatedAptamers, setMutatedAptamers] = useState([]);
-  const [loadingGenerate, setLoadingGenerate] = useState(false);
+  // const [loadingGenerate, setLoadingGenerate] = useState(false);
   const [loadingMutate, setLoadingMutate] = useState(false);
 
   // Dark mode toggle
