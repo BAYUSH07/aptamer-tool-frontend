@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import './App.css';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import logo from 'src/PAWSLOGO.png';
+import logo from './PAWSLOGO.png';
 
 // Read the live backend URL from the environment variable set in Netlify
 const API_BASE_URL = process.env.REACT_APP_API_URL;
