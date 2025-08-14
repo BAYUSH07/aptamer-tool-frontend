@@ -14,7 +14,7 @@ body, html, #root, .app {
 
 /* Container / Main */
 main {
-  max-width: 1200px;           /* Wider container for more space */
+  max-width: 1200px;
   padding: 1.5rem 2rem;
   margin: 2rem auto;           
   background: #fff;
@@ -22,9 +22,8 @@ main {
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
   box-sizing: border-box;
   min-width: 300px;
-  overflow-x: hidden;          /* Prevent accidental horizontal scroll */
+  overflow-x: hidden;
 }
-
 .app.dark-mode main {
   background-color: rgba(20, 30, 48, 0.96);
 }
@@ -125,23 +124,24 @@ button:disabled {
   border-color: #2a8df5;
 }
 
-/* Tables */
+/* Tables - structured layout */
 .results-table {
   width: 100%;
-  min-width: 800px;
+  min-width: 900px;
   margin: 0 auto;
   background: #fff;
   border-radius: 7px;
   box-shadow: 0 1px 10px rgba(0, 0, 0, 0.05);
   border-collapse: collapse;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   color: inherit;
-  table-layout: auto;
+  table-layout: fixed; /* Fixed layout for aligned columns */
 }
 .app.dark-mode .results-table {
   background: #182e40;
 }
 
+/* Head row */
 .results-table thead tr {
   background-color: #007bff;
   color: white;
@@ -150,21 +150,21 @@ button:disabled {
   background-color: #0c56d1;
 }
 
+/* Cells */
 .results-table th,
 .results-table td {
   padding: 0.6rem 0.8rem;
-  border: 1px solid #ccc;               /* Strong borders */
-  text-align: left;
+  border: 1px solid #ccc;
+  text-align: center;
   vertical-align: middle;
-  word-break: break-word;               
-  white-space: normal;                  /* Let text wrap */
+  word-break: break-word;
+  white-space: normal;
 }
-
 .results-table th {
-  white-space: nowrap;
+  font-weight: 600;
 }
 
-/* Zebra striping for rows */
+/* Zebra stripes */
 .results-table tbody tr:nth-child(even) {
   background-color: #f9f9f9;
 }
@@ -172,7 +172,7 @@ button:disabled {
   background-color: #1f3a50;
 }
 
-/* Monospace column styling */
+/* Monospace styling */
 .results-table td[style*="monospace"] {
   font-family: 'Courier New', Courier, monospace;
   font-size: 0.9rem;
@@ -184,15 +184,20 @@ button:disabled {
   color: #aaceff;
 }
 
-/* Compact columns for MFE, Tm, Kd */
+/* Compact number columns */
+.results-table td:nth-child(1),
+.results-table th:nth-child(1),
+.results-table td:nth-child(3),
+.results-table th:nth-child(3),
+.results-table td:nth-child(4),
+.results-table th:nth-child(4),
 .results-table td:nth-child(6),
-.results-table td:nth-child(7),
-.results-table td:nth-child(8),
 .results-table th:nth-child(6),
+.results-table td:nth-child(7),
 .results-table th:nth-child(7),
+.results-table td:nth-child(8),
 .results-table th:nth-child(8) {
-  text-align: center;
-  min-width: 60px;
+  width: 70px;
 }
 
 /* Dark mode table borders */
@@ -221,7 +226,7 @@ nav a:hover {
   border-bottom: 2px solid #00c77f;
 }
 
-/* Dark mode toggle button */
+/* Dark mode toggle */
 .dark-toggle {
   position: fixed;
   top: 15px;
@@ -245,12 +250,7 @@ nav a:hover {
   background-color: #062f75;
 }
 
-/* Result section */
-.result-section {
-  margin-top: 1rem;
-}
-
-/* Footer Styling */
+/* Footer */
 footer {
   padding: 12px 0;
   text-align: center;
@@ -261,13 +261,13 @@ footer {
   color: #bbb;
 }
 
-/* Accessibility focus outlines */
+/* Accessibility focus */
 button:focus, a:focus {
   outline: 2px solid #00c77f;
   outline-offset: 2px;
 }
 
-/* Responsive adjustments */
+/* Responsive */
 @media (max-width: 1000px) {
   main, .box, .result-section {
     padding: 1rem 0.2em;
@@ -290,7 +290,7 @@ button:focus, a:focus {
   }
 }
 
-/* About page custom styling */
+/* About page */
 .about-logo {
   width: 110px;
   height: 110px;
