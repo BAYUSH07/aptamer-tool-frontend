@@ -8,7 +8,7 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import About from './About';
 import Footer from './Footer';
 import Advanced from './Advanced';
-import logo from '.src/PAWSLOGO.png'; // Adjust filename if needed
+import logo from './PAWSLOGO.png'; // Adjust filename if needed
 
 function App() {
   // Input states
