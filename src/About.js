@@ -28,7 +28,7 @@ const team = [
     name: "Ayush Bhoj",
     role: "Project Student",
     photo: ayushPhoto,
-    linkedin: "https://www.linkedin.com/in/your-ayush-linkedin",
+    linkedin: "https://www.linkedin.com/in/ayush-bhoj",
     scholar: "https://scholar.google.com/citations?user=yourayushscholarid"
   },
   {
@@ -135,5 +135,6 @@ const About = () => (
 );
 
 export default About;
+
 
 
