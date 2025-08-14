@@ -1,4 +1,4 @@
-// src/Advanced.js
+// Advanced.js
 
 import React, { useState } from 'react';
 import './App.css';
@@ -6,7 +6,7 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import logo from './Photos/PAWSLOGOWEB.svg';
 
-// --- CHANGE #1: Define the live backend URL from the environment variable ---
+// Read the live backend URL from the environment variable set in Netlify
 const API_BASE_URL = process.env.REACT_APP_API_URL;
 
 function Advanced() {
@@ -136,7 +136,6 @@ function Advanced() {
     setSvgLoading(true);
     setSvgModalOpen(true);
     try {
-      // --- CHANGE #2: Use the live backend URL ---
       const response = await fetch(`${API_BASE_URL}/plot-structure`, {
         method: "POST",
         headers: {
@@ -166,10 +165,8 @@ function Advanced() {
       toast.error("Please enter a FASTA sequence.");
       return;
     }
-    // Validation (similar to before), you can add more validations here
     setLoading(true);
     try {
-      // --- CHANGE #3: Use the live backend URL ---
       const response = await fetch(`${API_BASE_URL}/generate-aptamers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -220,7 +217,6 @@ function Advanced() {
     }
     setLoading(true);
     try {
-      // --- CHANGE #4: Use the live backend URL ---
       const response = await fetch(`${API_BASE_URL}/point-mutate-aptamer`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
