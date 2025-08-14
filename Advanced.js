@@ -6,6 +6,9 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import logo from './Photos/PAWSLOGOWEB.svg';
 
+// --- CHANGE #1: Define the live backend URL from the environment variable ---
+const API_BASE_URL = process.env.REACT_APP_API_URL;
+
 function Advanced() {
   // Mode: 'generate' or 'mutate'
   const [mode, setMode] = useState('generate');
@@ -133,7 +136,8 @@ function Advanced() {
     setSvgLoading(true);
     setSvgModalOpen(true);
     try {
-      const response = await fetch("http://127.0.0.1:8000/plot-structure", {
+      // --- CHANGE #2: Use the live backend URL ---
+      const response = await fetch(`${API_BASE_URL}/plot-structure`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -165,7 +169,8 @@ function Advanced() {
     // Validation (similar to before), you can add more validations here
     setLoading(true);
     try {
-      const response = await fetch('http://127.0.0.1:8000/generate-aptamers', {
+      // --- CHANGE #3: Use the live backend URL ---
+      const response = await fetch(`${API_BASE_URL}/generate-aptamers`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -215,7 +220,8 @@ function Advanced() {
     }
     setLoading(true);
     try {
-      const response = await fetch('http://127.0.0.1:8000/point-mutate-aptamer', {
+      // --- CHANGE #4: Use the live backend URL ---
+      const response = await fetch(`${API_BASE_URL}/point-mutate-aptamer`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -547,4 +553,3 @@ function Advanced() {
 }
 
 export default Advanced;
-
