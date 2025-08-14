@@ -14,15 +14,15 @@ body, html, #root, .app {
 
 /* Container / Main */
 main {
-  max-width: 960px;
-  width: 98vw;
-  margin: 2rem auto;
-  padding: 1.2rem 1rem 2.5rem 1rem;
-  background-color: rgba(255, 255, 255, 0.95);
-  border-radius: 13px;
-  min-height: 88vh;
+  max-width: 1200px;           /* Wider container for more space */
+  padding: 1.5rem 2rem;
+  margin: 2rem auto;           
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
   box-sizing: border-box;
-  overflow-x: auto;
+  min-width: 300px;
+  overflow-x: hidden;          /* Prevent accidental horizontal scroll */
 }
 
 .app.dark-mode main {
@@ -36,12 +36,10 @@ h1.heading {
   margin-bottom: 2rem;
   font-size: 2.5rem;
 }
-
 h2 {
   font-weight: 600;
   margin-bottom: 1rem;
 }
-
 h3 {
   margin-top: 1.5rem;
 }
@@ -67,7 +65,6 @@ h3 {
   box-sizing: border-box;
   font-family: 'Courier New', Courier, monospace;
 }
-
 .app.dark-mode .input-box {
   background: #0c1a2a;
   color: #fff;
@@ -88,24 +85,19 @@ button {
   transition: background-color 0.3s ease;
   user-select: none;
 }
-
 button:hover:not(:disabled) {
   background-color: #0056b3;
 }
-
 button:disabled {
   cursor: default;
   background-color: #81a8db;
 }
-
 .reset-btn {
   background-color: #dc3545;
 }
-
 .reset-btn:hover {
   background-color: #a71d2a;
 }
-
 .export-controls button {
   margin-right: 0.5rem;
   font-weight: 500;
@@ -116,24 +108,19 @@ button:disabled {
 .app.dark-mode button {
   background-color: #0c56d1;
 }
-
 .app.dark-mode button:hover:not(:disabled) {
   background-color: #062f75;
 }
 
-/* Result tables container overflow */
+/* Table scroll container */
 .table-scroll {
   width: 100%;
   max-width: 100%;
   overflow-x: auto;
-  background: inherit;
   margin: 0 auto;
   border-radius: 8px;
-
-  /* Smooth scroll for horizontal overflow */
   scroll-behavior: smooth;
 }
-
 .app.dark-mode .table-scroll {
   border-color: #2a8df5;
 }
@@ -142,7 +129,6 @@ button:disabled {
 .results-table {
   width: 100%;
   min-width: 800px;
-  max-width: 100%;
   margin: 0 auto;
   background: #fff;
   border-radius: 7px;
@@ -152,7 +138,6 @@ button:disabled {
   color: inherit;
   table-layout: auto;
 }
-
 .app.dark-mode .results-table {
   background: #182e40;
 }
@@ -161,35 +146,39 @@ button:disabled {
   background-color: #007bff;
   color: white;
 }
-
 .app.dark-mode .results-table thead tr {
   background-color: #0c56d1;
 }
 
 .results-table th,
 .results-table td {
-  padding: 0.5rem 0.7rem;
-  border: 1px solid #ddd;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid #ccc;               /* Strong borders */
   text-align: left;
   vertical-align: middle;
-  word-wrap: break-word; /* Added for word wrapping */
-  hyphens: auto;
+  word-break: break-word;               
+  white-space: normal;                  /* Let text wrap */
 }
 
 .results-table th {
   white-space: nowrap;
 }
 
-/* Monospace font for Structure/secondary structure column */
+/* Zebra striping for rows */
+.results-table tbody tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+.app.dark-mode .results-table tbody tr:nth-child(even) {
+  background-color: #1f3a50;
+}
+
+/* Monospace column styling */
 .results-table td[style*="monospace"] {
   font-family: 'Courier New', Courier, monospace;
   font-size: 0.9rem;
   background-color: #e9f6ff;
-  max-width: 190px;
-  word-break: break-word;
-  letter-spacing: 2px;
+  letter-spacing: 1.2px;
 }
-
 .app.dark-mode .results-table td[style*="monospace"] {
   background-color: #103060;
   color: #aaceff;
@@ -206,7 +195,7 @@ button:disabled {
   min-width: 60px;
 }
 
-/* Styling for dark mode table cells */
+/* Dark mode table borders */
 .app.dark-mode .results-table th,
 .app.dark-mode .results-table td {
   border-color: #1a2e4c;
@@ -219,7 +208,6 @@ nav {
   text-align: center;
   padding: 1rem 0 1.5rem 0;
 }
-
 nav a {
   margin: 0 20px;
   text-decoration: none;
@@ -229,7 +217,6 @@ nav a {
   border-bottom: 2px solid transparent;
   transition: border-bottom 0.3s;
 }
-
 nav a:hover {
   border-bottom: 2px solid #00c77f;
 }
@@ -248,15 +235,12 @@ nav a:hover {
   cursor: pointer;
   z-index: 1000;
 }
-
 .dark-toggle:hover {
   background-color: #0056b3;
 }
-
 .app.dark-mode .dark-toggle {
   background-color: #0c56d1;
 }
-
 .app.dark-mode .dark-toggle:hover {
   background-color: #062f75;
 }
@@ -273,12 +257,11 @@ footer {
   font-size: 0.9rem;
   color: #666;
 }
-
 .app.dark-mode footer {
   color: #bbb;
 }
 
-/* Accessibility: focus outlines */
+/* Accessibility focus outlines */
 button:focus, a:focus {
   outline: 2px solid #00c77f;
   outline-offset: 2px;
@@ -295,14 +278,12 @@ button:focus, a:focus {
     min-width: 520px;
   }
 }
-
 @media (max-width: 650px) {
   .results-table th,
   .results-table td {
     font-size: 0.8rem;
     padding: 0.3rem 0.5rem;
   }
-
   nav a {
     font-size: 1rem;
     margin: 0 12px;
@@ -318,13 +299,11 @@ button:focus, a:focus {
   border-radius: 50%;
   box-shadow: 0 4px 18px rgba(0,0,0,0.09);
 }
-
 .section-label {
   font-size: 1.28em;
   font-weight: 600;
   color: #1ac87a;
 }
-
 .about-mission {
   background: #e9f7ef;
   color: #194d33;
@@ -337,9 +316,7 @@ button:focus, a:focus {
   font-weight: 500;
   box-shadow: 0 1px 10px rgba(46,204,113,0.04);
 }
-
 @media (max-width:800px){
   .about-team-row, .about-mentors-row { flex-direction: column; gap: 1.3em; }
   .about-section { padding: 0 0.4em; }
 }
-
