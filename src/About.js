@@ -1,7 +1,6 @@
 // src/About.js
 
 import React from 'react';
-const [state, setState] = React.useState(initialValue);
 
 // Import logo and team member photos (update filenames/paths as needed)
 import logo from './PAWSLOGO.png';
@@ -136,6 +135,7 @@ const About = () => (
 );
 
 export default About;
+
 
 
 
