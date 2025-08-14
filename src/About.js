@@ -3,7 +3,7 @@
 import React from 'react';
 
 // Import logo and team member photos (update filenames/paths as needed)
-import logo from 'src/PAWSLOGO.png';
+import logo from './PAWSLOGO.png';
 import ayushPhoto from './Ayush1.png';
 import aadityaPhoto from './Aaditya.jpeg';
 import pranjalPhoto from './Pranjal.jpg';
@@ -135,6 +135,7 @@ const About = () => (
 );
 
 export default About;
+
 
 
 
