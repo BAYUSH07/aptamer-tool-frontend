@@ -3,12 +3,12 @@
 import React from 'react';
 
 // Import logo and team member photos (update filenames/paths as needed)
-import logo from './Photos/PAWSLOGOWEB.svg';
-import ayushPhoto from './Photos/Ayush1.png';
-import aadityaPhoto from './Photos/Aaditya.jpeg';
-import pranjalPhoto from './Photos/Pranjal.jpg';
-import sanketPhoto from './Photos/DrSanketHQ.png';
-import sandeepanPhoto from './Photos/DrSandeepanHQ.png';
+import logo from './PAWSLOGOWEB.svg';
+import ayushPhoto from './Ayush1.png';
+import aadityaPhoto from './Aaditya.jpeg';
+import pranjalPhoto from './Pranjal.jpg';
+import sanketPhoto from './DrSanketHQ.png';
+import sandeepanPhoto from './DrSandeepanHQ.png';
 
 // Social icons as SVGs
 const LinkedInIcon = () => (
@@ -135,4 +135,5 @@ const About = () => (
 );
 
 export default About;
+
 
