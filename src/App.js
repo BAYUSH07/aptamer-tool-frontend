@@ -10,42 +10,39 @@ import Footer from './Footer';
 import Advanced from './Advanced';
 import logo from './PAWSLOGO.png';
 
-// Use Netlify Environment Variable for backend API
+// ✅ Backend API URL from Netlify Env Variable
 const API_BASE = process.env.REACT_APP_API_URL;
 
 function App() {
-  // Input states
+  // Inputs
   const [fastaInput, setFastaInput] = useState('');
   const [aptamerInput, setAptamerInput] = useState('');
 
-  // Aptamers data and loading
+  // Data
   const [generatedAptamers, setGeneratedAptamers] = useState([]);
   const [mutatedAptamers, setMutatedAptamers] = useState([]);
+
+  // Loading
   const [loadingGenerate, setLoadingGenerate] = useState(false);
   const [loadingMutate, setLoadingMutate] = useState(false);
 
-  // Dark mode toggle
+  // Dark Mode
   const [darkMode, setDarkMode] = useState(false);
 
-  // Sorting state for generated aptamers
+  // Sorting
   const [genSortKey, setGenSortKey] = useState(null);
   const [genSortOrder, setGenSortOrder] = useState('asc');
-
-  // Sorting state for mutated aptamers
   const [mutSortKey, setMutSortKey] = useState(null);
   const [mutSortOrder, setMutSortOrder] = useState('asc');
 
-  // SVG modal states
+  // SVG Modal
   const [svgModalOpen, setSvgModalOpen] = useState(false);
   const [svgContent, setSvgContent] = useState('');
   const [svgLoading, setSvgLoading] = useState(false);
 
-  // API Calls
+  // --- API Calls ---
   const generateAptamers = async () => {
-    if (!fastaInput.trim()) {
-      toast.error('Please enter a FASTA sequence.');
-      return;
-    }
+    if (!fastaInput.trim()) return toast.error('Please enter a FASTA sequence.');
     setLoadingGenerate(true);
     try {
       const response = await fetch(`${API_BASE}/generate-aptamers`, {
@@ -53,12 +50,11 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fasta_sequence: fastaInput, num_aptamers: 10 }),
       });
-      if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
+      if (!response.ok) throw new Error(response.statusText);
       const data = await response.json();
       setGeneratedAptamers(data.aptamers || []);
-      toast.success(`${data.aptamers.length} aptamers generated ✅`);
-    } catch (error) {
-      console.error('Error generating aptamers:', error);
+      toast.success(`${(data.aptamers || []).length} aptamers generated ✅`);
+    } catch {
       toast.error('❌ Failed to generate aptamers');
     } finally {
       setLoadingGenerate(false);
@@ -66,10 +62,7 @@ function App() {
   };
 
   const mutateAptamer = async () => {
-    if (!aptamerInput.trim()) {
-      toast.error('Please enter an aptamer sequence to mutate.');
-      return;
-    }
+    if (!aptamerInput.trim()) return toast.error('Please enter an aptamer sequence to mutate.');
     setLoadingMutate(true);
     try {
       const response = await fetch(`${API_BASE}/mutate-aptamer`, {
@@ -77,21 +70,20 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ aptamer: aptamerInput, num_mutations: 10 }),
       });
-      if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
+      if (!response.ok) throw new Error(response.statusText);
       const data = await response.json();
       setMutatedAptamers(data.mutations || []);
-      toast.success(`${data.mutations.length} mutations created ✅`);
-    } catch (error) {
-      console.error('Error mutating aptamer:', error);
+      toast.success(`${(data.mutations || []).length} mutations created ✅`);
+    } catch {
       toast.error('❌ Failed to mutate aptamer');
     } finally {
       setLoadingMutate(false);
     }
   };
 
-  // Helpers for formatting download and clipboard
+  // --- Helpers ---
   const formatForExcel = (data) => {
-    let rows = ['#\tSequence\tLength\tGC %\tStructure\tMFE (kcal/mol)\tTm\tKd (nM)'];
+    let rows = ['#\tSequence\tLength\tGC %\tStructure\tMFE\tTm\tKd (nM)'];
     data.forEach((apt, idx) => {
       rows.push(
         `${idx + 1}\t${apt.sequence}\t${apt.length}\t${apt.gc_content}\t${apt.structure || ''}\t${apt.mfe || ''}\t${apt.tm || ''}\t${apt.kd || ''}`
@@ -101,142 +93,101 @@ function App() {
   };
 
   const copyToClipboard = (data) => {
-    const text = formatForExcel(data);
-    navigator.clipboard
-      .writeText(text)
+    navigator.clipboard.writeText(formatForExcel(data))
       .then(() => toast.success('Copied to clipboard!'))
       .catch(() => toast.error('Failed to copy to clipboard.'));
   };
 
-  const downloadData = (data, filename, type) => {
-    try {
-      const blob = new Blob([formatForExcel(data)], { type });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = filename;
-      link.click();
-    } catch {
-      toast.error('Failed to download file');
-    }
+  const downloadData = (data, filename) => {
+    const blob = new Blob([formatForExcel(data)], { type: 'text/plain' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
   };
 
-  // Sorting helpers
   const parseSortableValue = (value, type) => {
-    if (value === null || value === undefined || value === 'N/A') return NaN;
-    if (type === 'mfe' || type === 'kd') {
+    if (value == null || value === 'N/A') return NaN;
+    if (['mfe', 'kd'].includes(type)) {
       const str = String(value);
-      if (str.startsWith('<')) return parseFloat(str.substring(1)) || 0;
-      if (str.startsWith('>')) return parseFloat(str.substring(1)) || 1e9;
+      if (str.startsWith('<')) return parseFloat(str.slice(1)) || 0;
+      if (str.startsWith('>')) return parseFloat(str.slice(1)) || 1e9;
       return parseFloat(str);
     }
-    if (type === 'gc_content' || type === 'tm' || type === 'length') {
-      return Number(value);
-    }
+    if (['gc_content', 'tm', 'length'].includes(type)) return Number(value);
     return String(value).toLowerCase();
   };
 
-  const sortAptamers = (aptamers, key, order = 'asc') => {
-    if (!key) return aptamers;
-    const typeMap = {
-      gc_content: 'gc_content',
-      length: 'length',
-      mfe: 'mfe',
-      kd: 'kd',
-      tm: 'tm',
-      sequence: 'string',
-    };
+  const sortAptamers = (data, key, order) => {
+    if (!key) return data;
+    const typeMap = { gc_content: 'gc_content', length: 'length', mfe: 'mfe', kd: 'kd', tm: 'tm', sequence: 'string' };
     const type = typeMap[key] || 'string';
-    return [...aptamers].sort((a, b) => {
-      const aVal = parseSortableValue(a[key], type);
-      const bVal = parseSortableValue(b[key], type);
-      if (isNaN(aVal) && !isNaN(bVal)) return 1;
-      if (!isNaN(aVal) && isNaN(bVal)) return -1;
-      if (isNaN(aVal) && isNaN(bVal)) return 0;
-      if (type !== 'string') {
-        return order === 'asc' ? aVal - bVal : bVal - aVal;
-      }
-      if (aVal < bVal) return order === 'asc' ? -1 : 1;
-      if (aVal > bVal) return order === 'asc' ? 1 : -1;
-      return 0;
+    return [...data].sort((a, b) => {
+      const av = parseSortableValue(a[key], type);
+      const bv = parseSortableValue(b[key], type);
+      if (isNaN(av) && !isNaN(bv)) return 1;
+      if (!isNaN(av) && isNaN(bv)) return -1;
+      if (isNaN(av) && isNaN(bv)) return 0;
+      return type !== 'string' ? (order === 'asc' ? av - bv : bv - av) : (order === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av));
     });
   };
 
   const onGenSortChange = (field) => {
-    if (genSortKey === field) {
-      setGenSortOrder(genSortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setGenSortKey(field);
-      setGenSortOrder('asc');
-    }
+    if (genSortKey === field) setGenSortOrder(genSortOrder === 'asc' ? 'desc' : 'asc');
+    else { setGenSortKey(field); setGenSortOrder('asc'); }
   };
 
   const onMutSortChange = (field) => {
-    if (mutSortKey === field) {
-      setMutSortOrder(mutSortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setMutSortKey(field);
-      setMutSortOrder('asc');
-    }
+    if (mutSortKey === field) setMutSortOrder(mutSortOrder === 'asc' ? 'desc' : 'asc');
+    else { setMutSortKey(field); setMutSortOrder('asc'); }
   };
 
-  const renderSortArrow = (key, activeKey, order) => {
-    if (key !== activeKey) return null;
-    return order === 'asc' ? ' ▲' : ' ▼';
-  };
+  const renderSortArrow = (key, active, order) => key === active ? (order === 'asc' ? ' ▲' : ' ▼') : null;
 
-  const sortedGeneratedAptamers = sortAptamers(generatedAptamers, genSortKey, genSortOrder);
-  const sortedMutatedAptamers = sortAptamers(mutatedAptamers, mutSortKey, mutSortOrder);
+  const sortedGenerated = sortAptamers(generatedAptamers, genSortKey, genSortOrder);
+  const sortedMutated = sortAptamers(mutatedAptamers, mutSortKey, mutSortOrder);
 
-  // SVG modal handlers
   const handleShowStructure = async (sequence, structure) => {
-    setSvgLoading(true);
-    setSvgModalOpen(true);
+    setSvgLoading(true); setSvgModalOpen(true);
     try {
-      const response = await fetch(`${API_BASE}/plot-structure`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sequence, structure }),
+      const res = await fetch(`${API_BASE}/plot-structure`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sequence, structure })
       });
-      if (!response.ok) {
-        const errorText = await response.text();
-        toast.error(`Structure visualization failed: ${errorText}`);
-        setSvgContent(`<p style="color:red; padding: 1rem">${errorText}</p>`);
+      if (!res.ok) {
+        const txt = await res.text();
+        toast.error('Structure visualization failed');
+        setSvgContent(`<p style="color:red">${txt}</p>`);
         return;
       }
-      setSvgContent(await response.text());
+      setSvgContent(await res.text());
     } catch {
       toast.error('Error fetching structure visualization.');
-      setSvgContent(`<p style="color:red; padding: 1rem">Error fetching structure visualization.</p>`);
+    } finally {
+      setSvgLoading(false);
     }
-    setSvgLoading(false);
   };
 
-  const downloadSvgFile = (svgContent, filename = 'rna_structure.svg') => {
+  const downloadSvgFile = () => {
     const blob = new Blob([svgContent], { type: 'image/svg+xml' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = filename;
-    document.body.appendChild(link);
+    link.download = 'rna_structure.svg';
     link.click();
-    setTimeout(() => {
-      URL.revokeObjectURL(link.href);
-      link.remove();
-    }, 100);
   };
 
+  // ✅ Reset Function — NOW USED in UI
   const handleReset = () => {
     if (window.confirm('Are you sure you want to reset everything?')) {
       setFastaInput('');
       setAptamerInput('');
       setGeneratedAptamers([]);
       setMutatedAptamers([]);
-      toast.info('Reset successful.');
       setSvgModalOpen(false);
       setSvgContent('');
-      setGenSortKey(null);
-      setGenSortOrder('asc');
-      setMutSortKey(null);
-      setMutSortOrder('asc');
+      setGenSortKey(null); setGenSortOrder('asc');
+      setMutSortKey(null); setMutSortOrder('asc');
+      toast.info('Reset successful.');
     }
   };
 
@@ -256,201 +207,101 @@ function App() {
         </nav>
 
         <div style={{ textAlign: 'center', marginTop: 18 }}>
-          <img
-            src={logo}
-            alt="PAWS Web Tool Logo"
-            style={{ width: 80, height: 80, borderRadius: '50%', boxShadow: '0 2px 12px rgba(0,0,0,0.1)' }}
-          />
-          <h1 style={{ margin: '0.4em 0 0.2em 0', fontWeight: 'bold', fontSize: '2.2em' }}>PAWS Web Tool</h1>
-          <div style={{ fontSize: '1.1em', fontWeight: 500, color: '#0c56d1', marginBottom: 9 }}>
-            Prediction of Aptamers Without SELEX
-          </div>
+          <img src={logo} alt="PAWS" style={{ width: 80, borderRadius: '50%' }} />
+          <h1>PAWS Web Tool</h1>
+          <div style={{ fontSize: '1.1em', color: '#0c56d1' }}>Prediction of Aptamers Without SELEX</div>
         </div>
 
         <Routes>
-          <Route
-            path="/"
-            element={
-              <main style={{ padding: 20 }}>
-                <section style={{ textAlign: 'center' }}>
-                  <h2>Generate Aptamers</h2>
-                  <textarea
-                    value={fastaInput}
-                    onChange={(e) => setFastaInput(e.target.value)}
-                    placeholder="Enter FASTA sequence..."
-                    rows={4}
-                    style={{ width: '80%', marginBottom: 10 }}
-                    disabled={loadingGenerate}
-                  />
-                  <br />
-                  <button onClick={generateAptamers} disabled={loadingGenerate}>
-                    {loadingGenerate ? 'Generating...' : 'Generate'}
-                  </button>
+          <Route path="/" element={
+            <main style={{ padding: 20 }}>
+              {/* Generate Aptamers */}
+              <h2>Generate Aptamers</h2>
+              <textarea value={fastaInput} onChange={e => setFastaInput(e.target.value)}
+                placeholder="Enter FASTA sequence..." rows={4} style={{ width: '80%' }} />
+              <br />
+              <button onClick={generateAptamers} disabled={loadingGenerate}>
+                {loadingGenerate ? 'Generating...' : 'Generate'}
+              </button>
 
-                  {generatedAptamers.length > 0 && (
-                    <>
-                      <h3 style={{ marginTop: 30 }}>Generated Aptamers</h3>
-                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead>
-                          <tr>
-                            {['sequence', 'length', 'gc_content', 'mfe', 'tm', 'kd'].map((field) => (
-                              <th
-                                key={field}
-                                onClick={() => onGenSortChange(field)}
-                                style={{ cursor: 'pointer', borderBottom: '1px solid #ccc', padding: 8 }}
-                              >
-                                {field.toUpperCase()} {renderSortArrow(field, genSortKey, genSortOrder)}
-                              </th>
-                            ))}
-                            <th>Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {sortedGeneratedAptamers.map((apt, idx) => (
-                            <tr key={idx} style={{ borderBottom: '1px solid #eee' }}>
-                              <td>{apt.sequence}</td>
-                              <td>{apt.length}</td>
-                              <td>{apt.gc_content}</td>
-                              <td>{apt.mfe || 'N/A'}</td>
-                              <td>{apt.tm}</td>
-                              <td>{apt.kd}</td>
-                              <td>
-                                <button onClick={() => handleShowStructure(apt.sequence, apt.structure)}>
-                                  View Structure
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      <div style={{ marginTop: 10 }}>
-                        <button onClick={() => copyToClipboard(sortedGeneratedAptamers)}>Copy to Clipboard</button>
-                        <button onClick={() => downloadData(sortedGeneratedAptamers, 'generated_aptamers.txt', 'text/plain')}>
-                          Download TXT
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </section>
+              {/* Generated list */}
+              {generatedAptamers.length > 0 && (
+                <>
+                  <h3>Generated Aptamers</h3>
+                  <table><thead><tr>
+                    {['sequence','length','gc_content','mfe','tm','kd'].map(f => (
+                      <th key={f} onClick={() => onGenSortChange(f)} style={{ cursor: 'pointer' }}>
+                        {f.toUpperCase()}{renderSortArrow(f, genSortKey, genSortOrder)}
+                      </th>
+                    ))}
+                    <th>Actions</th>
+                  </tr></thead>
+                  <tbody>
+                    {sortedGenerated.map((apt, i) => (
+                      <tr key={i}>
+                        <td>{apt.sequence}</td><td>{apt.length}</td><td>{apt.gc_content}</td>
+                        <td>{apt.mfe}</td><td>{apt.tm}</td><td>{apt.kd}</td>
+                        <td><button onClick={() => handleShowStructure(apt.sequence, apt.structure)}>View Structure</button></td>
+                      </tr>
+                    ))}
+                  </tbody></table>
+                  <button onClick={() => copyToClipboard(sortedGenerated)}>Copy to Clipboard</button>
+                  <button onClick={() => downloadData(sortedGenerated, 'generated.txt')}>Download TXT</button>
+                </>
+              )}
 
-                <section style={{ textAlign: 'center', marginTop: 40 }}>
-                  <h2>Mutate Aptamer</h2>
-                  <textarea
-                    value={aptamerInput}
-                    onChange={(e) => setAptamerInput(e.target.value)}
-                    placeholder="Enter aptamer sequence..."
-                    rows={2}
-                    style={{ width: '80%', marginBottom: 10 }}
-                    disabled={loadingMutate}
-                  />
-                  <br />
-                  <button onClick={mutateAptamer} disabled={loadingMutate}>
-                    {loadingMutate ? 'Mutating...' : 'Mutate'}
-                  </button>
+              {/* Mutate Aptamer */}
+              <h2 style={{ marginTop: 30 }}>Mutate Aptamer</h2>
+              <textarea value={aptamerInput} onChange={e => setAptamerInput(e.target.value)}
+                placeholder="Enter aptamer..." rows={2} style={{ width: '80%' }} />
+              <br />
+              <button onClick={mutateAptamer} disabled={loadingMutate}>
+                {loadingMutate ? 'Mutating...' : 'Mutate'}
+              </button>
 
-                  {mutatedAptamers.length > 0 && (
-                    <>
-                      <h3 style={{ marginTop: 30 }}>Mutated Aptamers</h3>
-                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead>
-                          <tr>
-                            {['sequence', 'length', 'gc_content', 'mfe', 'tm', 'kd'].map((field) => (
-                              <th
-                                key={field}
-                                onClick={() => onMutSortChange(field)}
-                                style={{ cursor: 'pointer', borderBottom: '1px solid #ccc', padding: 8 }}
-                              >
-                                {field.toUpperCase()} {renderSortArrow(field, mutSortKey, mutSortOrder)}
-                              </th>
-                            ))}
-                            <th>Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {sortedMutatedAptamers.map((apt, idx) => (
-                            <tr key={idx} style={{ borderBottom: '1px solid #eee' }}>
-                              <td>{apt.sequence}</td>
-                              <td>{apt.length}</td>
-                              <td>{apt.gc_content}</td>
-                              <td>{apt.mfe || 'N/A'}</td>
-                              <td>{apt.tm}</td>
-                              <td>{apt.kd}</td>
-                              <td>
-                                <button onClick={() => handleShowStructure(apt.sequence, apt.structure)}>
-                                  View Structure
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      <div style={{ marginTop: 10 }}>
-                        <button onClick={() => copyToClipboard(sortedMutatedAptamers)}>Copy to Clipboard</button>
-                        <button onClick={() => downloadData(sortedMutatedAptamers, 'mutated_aptamers.txt', 'text/plain')}>
-                          Download TXT
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </section>
+              {mutatedAptamers.length > 0 && (
+                <>
+                  <h3>Mutated Aptamers</h3>
+                  <table><thead><tr>
+                    {['sequence','length','gc_content','mfe','tm','kd'].map(f => (
+                      <th key={f} onClick={() => onMutSortChange(f)} style={{ cursor: 'pointer' }}>
+                        {f.toUpperCase()}{renderSortArrow(f, mutSortKey, mutSortOrder)}
+                      </th>
+                    ))}
+                    <th>Actions</th>
+                  </tr></thead>
+                  <tbody>
+                    {sortedMutated.map((apt, i) => (
+                      <tr key={i}>
+                        <td>{apt.sequence}</td><td>{apt.length}</td><td>{apt.gc_content}</td>
+                        <td>{apt.mfe}</td><td>{apt.tm}</td><td>{apt.kd}</td>
+                        <td><button onClick={() => handleShowStructure(apt.sequence, apt.structure)}>View Structure</button></td>
+                      </tr>
+                    ))}
+                  </tbody></table>
+                  <button onClick={() => copyToClipboard(sortedMutated)}>Copy to Clipboard</button>
+                  <button onClick={() => downloadData(sortedMutated, 'mutated.txt')}>Download TXT</button>
+                </>
+              )}
 
-                {/* SVG Modal */}
-                {svgModalOpen && (
-                  <div
-                    style={{
-                      position: 'fixed',
-                      top: 0,
-                      left: 0,
-                      width: '100%',
-                      height: '100%',
-                      backgroundColor: 'rgba(0,0,0,0.5)',
-                      display: 'flex',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      zIndex: 1000,
-                    }}
-                    onClick={() => setSvgModalOpen(false)}
-                  >
-                    <div
-                      style={{
-                        backgroundColor: '#fff',
-                        padding: '1rem',
-                        borderRadius: '8px',
-                        maxWidth: '90%',
-                        maxHeight: '90%',
-                        overflow: 'auto',
-                        position: 'relative',
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {svgLoading ? (
-                        <p>Loading SVG...</p>
-                      ) : (
-                        <div
-                          dangerouslySetInnerHTML={{ __html: svgContent }}
-                          style={{ maxWidth: '100%', height: 'auto' }}
-                        />
-                      )}
-                      {!svgLoading && (
-                        <button
-                          onClick={() => downloadSvgFile(svgContent)}
-                          style={{ marginTop: '1rem' }}
-                        >
-                          Download SVG
-                        </button>
-                      )}
-                      <button
-                        onClick={() => setSvgModalOpen(false)}
-                        style={{ position: 'absolute', top: '8px', right: '8px' }}
-                      >
-                        Close
-                      </button>
-                    </div>
+              {/* ✅ Added Reset Button */}
+              <div style={{ marginTop: 20 }}>
+                <button onClick={handleReset} style={{ backgroundColor: 'red', color: 'white' }}>Reset All</button>
+              </div>
+
+              {/* SVG Modal */}
+              {svgModalOpen && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                  <div style={{ background: '#fff', padding: '1rem', borderRadius: '8px', position: 'relative' }}>
+                    {svgLoading ? <p>Loading...</p> : <div dangerouslySetInnerHTML={{ __html: svgContent }} />}
+                    {!svgLoading && <button onClick={downloadSvgFile}>Download SVG</button>}
+                    <button onClick={() => setSvgModalOpen(false)} style={{ position: 'absolute', top: '8px', right: '8px' }}>Close</button>
                   </div>
-                )}
-              </main>
-            }
-          />
+                </div>
+              )}
+
+            </main>
+          } />
           <Route path="/advanced" element={<Advanced />} />
           <Route path="/about" element={<About />} />
         </Routes>
