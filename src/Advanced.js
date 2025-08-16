@@ -1,13 +1,74 @@
-  // Advanced.js
-
+// Advanced.js
 import React, { useState } from 'react';
 import './App.css';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import logo from './PAWSLOGO.png';
 
-// Read the live backend URL from the environment variable set in Netlify
+// API
 const API_BASE_URL = process.env.REACT_APP_API_URL;
+
+// --- Export helpers (CSV/XLSX) ---
+const XLSX_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
+
+const ensureXLSX = () =>
+  new Promise((resolve, reject) => {
+    if (window.XLSX) return resolve(window.XLSX);
+    const s = document.createElement('script');
+    s.src = XLSX_CDN;
+    s.onload = () => resolve(window.XLSX);
+    s.onerror = () => reject(new Error('Failed to load XLSX library'));
+    document.body.appendChild(s);
+  });
+
+const columns = [
+  { key: 'sequence', label: 'Sequence' },
+  { key: 'length', label: 'Length' },
+  { key: 'gc_content', label: 'GC %' },
+  { key: 'structure', label: 'Structure' },
+  { key: 'mfe', label: 'MFE (kcal/mol)' },
+  { key: 'tm', label: 'Tm' },
+  { key: 'kd', label: 'Kd (nM)' },
+];
+
+const toCSV = (rows) => {
+  const head = columns.map(c => `"${c.label}"`).join(',');
+  const body = rows.map(r =>
+    columns.map(c => `"${String((r[c.key] ?? '')).replace(/"/g,'""')}"`).join(',')
+  ).join('\n');
+  return `${head}\n${body}`;
+};
+
+const downloadBlob = (content, filename, type) => {
+  const blob = new Blob([content], { type });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(link.href);
+};
+
+const downloadCSV = (data, filename = 'aptamers.csv') => {
+  downloadBlob(toCSV(data), filename, 'text/csv;charset=utf-8;');
+};
+
+const downloadXLSX = async (data, filename = 'aptamers.xlsx') => {
+  try {
+    const XLSX = await ensureXLSX();
+    const flat = data.map(r => {
+      const o = {};
+      columns.forEach(c => { o[c.label] = r[c.key] ?? ''; });
+      return o;
+    });
+    const ws = XLSX.utils.json_to_sheet(flat);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Aptamers');
+    XLSX.writeFile(wb, filename);
+  } catch (e) {
+    toast.error('XLSX export failed. Using CSV instead.');
+    downloadCSV(data, filename.replace(/\.xlsx$/i, '.csv'));
+  }
+};
 
 function Advanced() {
   // Mode: 'generate' or 'mutate'
@@ -37,79 +98,37 @@ function Advanced() {
   const [svgContent, setSvgContent] = useState('');
   const [svgLoading, setSvgLoading] = useState(false);
 
-  // Helper functions: Rendering MFE, KD, sorting, etc.
   const renderMfe = (mfe) => mfe === "N/A" ? "N/A" : `${mfe} kcal/mol`;
   const renderKd = (kd) => {
     if (!kd) return "";
     return kd === "N/A" || kd.startsWith("<") || kd.startsWith(">") ? kd : `${kd} nM`;
-  };
-
-  const formatForExcel = (data) => {
-    let rows = ['#\tSequence\tLength\tGC %\tStructure\tMFE (kcal/mol)\tTm\tKd (nM)'];
-    data.forEach((apt, idx) => {
-      rows.push(
-        `${idx + 1}\t${apt.sequence}\t${apt.length}\t${apt.gc_content}\t${apt.structure || ''}\t${apt.mfe || ''}\t${apt.tm || ''}\t${apt.kd || ''}`
-      );
-    });
-    return rows.join('\n');
-  };
-
-  const copyToClipboard = (data) => {
-    const text = formatForExcel(data);
-    navigator.clipboard.writeText(text)
-      .then(() => toast.success('Copied to clipboard!'))
-      .catch(() => toast.error('Failed to copy to clipboard.'));
-  };
-
-  const downloadData = (data, filename, type) => {
-    try {
-      const blob = new Blob([formatForExcel(data)], { type });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = filename;
-      link.click();
-      URL.revokeObjectURL(link.href);
-    } catch (error) {
-      toast.error("Failed to download file");
-    }
-  };
+    };
 
   const parseSortableValue = (value, type) => {
-    if (value === null || value === undefined || value === 'N/A') return NaN;
+    if (value == null || value === 'N/A') return NaN;
     if (type === 'mfe' || type === 'kd') {
       const str = String(value);
       if (str.startsWith('<')) return parseFloat(str.substring(1)) || 0;
       if (str.startsWith('>')) return parseFloat(str.substring(1)) || 1e9;
       return parseFloat(str);
     }
-    if (type === 'gc_content' || type === 'tm' || type === 'length') {
-      return Number(value);
-    }
+    if (type === 'gc_content' || type === 'tm' || type === 'length') return Number(value);
     return String(value).toLowerCase();
   };
 
-  const sortAptamers = (aptamers, key, order = 'asc') => {
-    if (!key) return aptamers;
+  const sortAptamers = (rows, key, order = 'asc') => {
+    if (!key) return rows;
     const typeMap = {
-      gc_content: 'gc_content',
-      length: 'length',
-      mfe: 'mfe',
-      kd: 'kd',
-      tm: 'tm',
-      sequence: 'string',
+      gc_content: 'gc_content', length: 'length', mfe: 'mfe', kd: 'kd', tm: 'tm', sequence: 'string',
     };
     const type = typeMap[key] || 'string';
-    const sorted = [...aptamers].sort((a, b) => {
+    const sorted = [...rows].sort((a, b) => {
       const aVal = parseSortableValue(a[key], type);
       const bVal = parseSortableValue(b[key], type);
-
       if (isNaN(aVal) && !isNaN(bVal)) return 1;
       if (!isNaN(aVal) && isNaN(bVal)) return -1;
       if (isNaN(aVal) && isNaN(bVal)) return 0;
-
-      if (type !== 'string') {
-        return order === 'asc' ? aVal - bVal : bVal - aVal;
-      }
+      if (type !== 'string') return order === 'asc' ? aVal - bVal : bVal - aVal;
       if (aVal < bVal) return order === 'asc' ? -1 : 1;
       if (aVal > bVal) return order === 'asc' ? 1 : -1;
       return 0;
@@ -118,17 +137,8 @@ function Advanced() {
   };
 
   const onSortChange = (field) => {
-    if (sortKey === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortKey(field);
-      setSortOrder('asc');
-    }
-  };
-
-  const renderSortArrow = (key, activeKey, order) => {
-    if (key !== activeKey) return null;
-    return order === 'asc' ? ' ▲' : ' ▼';
+    if (sortKey === field) setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(field); setSortOrder('asc'); }
   };
 
   // Structure SVG modal handler
@@ -138,9 +148,7 @@ function Advanced() {
     try {
       const response = await fetch(`${API_BASE_URL}/plot-structure`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sequence, structure })
       });
       if (!response.ok) {
@@ -151,7 +159,7 @@ function Advanced() {
       }
       const svgText = await response.text();
       setSvgContent(svgText);
-    } catch (error) {
+    } catch {
       toast.error("Error fetching structure visualization.");
       setSvgContent(`<p style="color:red; padding: 1rem">Error fetching structure visualization.</p>`);
     } finally {
@@ -203,14 +211,8 @@ function Advanced() {
 
   // Point mutation mode handler
   const handlePointMutate = async () => {
-    if (!aptamerInput.trim()) {
-      toast.error("Please enter an aptamer sequence.");
-      return;
-    }
-    if (numMutations <= 0) {
-      toast.error("Number of mutations must be positive.");
-      return;
-    }
+    if (!aptamerInput.trim()) return toast.error("Please enter an aptamer sequence.");
+    if (numMutations <= 0) return toast.error("Number of mutations must be positive.");
     if (aptamerInput.length < 20 || aptamerInput.length > 80) {
       toast.error("Aptamer length must be between 20 and 80 nucleotides.");
       return;
@@ -220,10 +222,7 @@ function Advanced() {
       const response = await fetch(`${API_BASE_URL}/point-mutate-aptamer`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          aptamer: aptamerInput,
-          num_point_mutations: numMutations,
-        })
+        body: JSON.stringify({ aptamer: aptamerInput, num_point_mutations: numMutations })
       });
       if (!response.ok) {
         const msg = await response.text();
@@ -249,151 +248,80 @@ function Advanced() {
 
   return (
     <main>
-    <div style={{ textAlign: 'center', marginTop: 18 }}>
-  <img
-    src={logo}
-    alt="PAWS Web Tool Logo"
-    style={{
-      width: 80,
-      height: 80,
-      borderRadius: '50%',
-      boxShadow: '0 2px 12px rgba(0,0,0,0.1)'
-    }}
-  />
-  <h1 style={{
-    margin: '0.4em 0 0.2em 0',
-    fontWeight: 'bold',
-    fontSize: '2.2em',
-    letterSpacing: '0.01em'
-  }}>
-    PAWS Web Tool
-  </h1>
-  <div style={{
-    fontSize: '1.1em',
-    fontWeight: 500,
-    color: '#0c56d1',
-    marginBottom: 9
-  }}>
-    Prediction of Aptamers Without SELEX
-  </div>
-</div>
+      <div className="hero">
+        <img src={logo} alt="PAWS Web Tool Logo" className="hero-logo" />
+        <h1 className="hero-title">PAWS Web Tool</h1>
+        <div className="hero-tagline">Prediction of Aptamers Without SELEX</div>
+      </div>
 
       <ToastContainer />
       <h1 className="heading">RNA Aptamer Generator (Advanced Mode)</h1>
 
       {/* Mode Selector */}
-      <div style={{ marginBottom: 20 }}>
-        <button onClick={() => {setMode('generate'); setAptamers([]);}} 
-          style={{ marginRight: 10, padding: '6px 12px', fontWeight: mode === 'generate' ? 'bold' : 'normal' }}>
+      <div className="actions-bar" style={{ marginBottom: 16 }}>
+        <button className={`ghost-btn ${mode === 'generate' ? 'ghost-active' : ''}`} onClick={() => { setMode('generate'); setAptamers([]); }}>
           Generate Aptamers
         </button>
-        <button onClick={() => {setMode('mutate'); setAptamers([]);}} 
-          style={{ padding: '6px 12px', fontWeight: mode === 'mutate' ? 'bold' : 'normal' }}>
+        <button className={`ghost-btn ${mode === 'mutate' ? 'ghost-active' : ''}`} onClick={() => { setMode('mutate'); setAptamers([]); }}>
           Point Mutation
         </button>
       </div>
 
       {mode === 'generate' && (
-        <div className="box">
-          <h2>🛠️ Advanced Generate Aptamers</h2>
+        <div className="box section-card">
+          <h2 className="section-title">🛠️ Advanced Generate Aptamers</h2>
           <textarea
             value={fastaInput}
             onChange={e => setFastaInput(e.target.value)}
             placeholder="Paste your FASTA sequence here..."
-            className="input-box"
+            className="input-box centered"
           />
-          <div style={{ margin: '1em 0', display: 'flex', flexWrap: 'wrap', gap: '1.2em', alignItems: 'flex-end' }}>
-            <div>
-              <label>Min GC %<br />
-                <input type="number" min="0" max="100" value={gcMin} onChange={e => setGcMin(e.target.value)} style={{ width: 70 }} />
-              </label>
-            </div>
-            <div>
-              <label>Max GC %<br />
-                <input type="number" min="0" max="100" value={gcMax} onChange={e => setGcMax(e.target.value)} style={{ width: 70 }} />
-              </label>
-            </div>
-            <div>
-              <label>Min Length<br />
-                <input type="number" min="1" value={lengthMin} onChange={e => setLengthMin(e.target.value)} style={{ width: 70 }} />
-              </label>
-            </div>
-            <div>
-              <label>Max Length<br />
-                <input type="number" min="1" value={lengthMax} onChange={e => setLengthMax(e.target.value)} style={{ width: 70 }} />
-              </label>
-            </div>
-            <div>
-              <label>Min Tm<br />
-                <input type="number" value={tmMin} onChange={e => setTmMin(e.target.value)} style={{ width: 70 }} />
-              </label>
-            </div>
-            <div>
-              <label>Max Tm<br />
-                <input type="number" value={tmMax} onChange={e => setTmMax(e.target.value)} style={{ width: 70 }} />
-              </label>
-            </div>
+          <div className="filter-row">
+            <label>Min GC %<br /><input type="number" min="0" max="100" value={gcMin} onChange={e => setGcMin(e.target.value)} /></label>
+            <label>Max GC %<br /><input type="number" min="0" max="100" value={gcMax} onChange={e => setGcMax(e.target.value)} /></label>
+            <label>Min Length<br /><input type="number" min="1" value={lengthMin} onChange={e => setLengthMin(e.target.value)} /></label>
+            <label>Max Length<br /><input type="number" min="1" value={lengthMax} onChange={e => setLengthMax(e.target.value)} /></label>
+            <label>Min Tm<br /><input type="number" value={tmMin} onChange={e => setTmMin(e.target.value)} /></label>
+            <label>Max Tm<br /><input type="number" value={tmMax} onChange={e => setTmMax(e.target.value)} /></label>
           </div>
-          <button className="generate-btn" onClick={handleGenerate} disabled={loading}>
-            {loading ? 'Generating…' : 'Generate'}
-          </button>
+          <div className="actions-bar">
+            <button className="cta-btn" onClick={handleGenerate} disabled={loading}>
+              {loading ? 'Generating…' : 'Generate'}
+            </button>
+          </div>
         </div>
       )}
 
-{mode === 'mutate' && (
-  <>
-    <div className="point-mutation-note" style={{
-      background: '#fff8e1',
-      color: '#9f6c00',
-      fontSize: '1.05em',
-      padding: '0.8em 1em',
-      borderRadius: '0.6em',
-      border: '1.5px solid #ffc107',
-      marginBottom: 16,
-      marginTop: 8,
-      maxWidth: 600
-    }}>
-      <b>Note:</b> Point mutation is random and may not always yield a valid mutated aptamer in one try.<br/>
-      Please try running the mutation at least 2–3 times, or modify your point mutation input parameters (such as the sequence or number of mutations) if you do not see results.
-    </div>
-    <div className="box">
-      <h2>🧬 Point Mutate Aptamer</h2>
-      <textarea
-        value={aptamerInput}
-        onChange={e => setAptamerInput(e.target.value)}
-        placeholder="Enter an aptamer sequence (20-80 nts)"
-        className="input-box"
-      />
-      <div style={{ marginTop: 10 }}>
-        <label>
-          Number of point mutations:&nbsp;
-          <input
-            type="number"
-            min="1"
-            max="100"
-            value={numMutations}
-            onChange={e => setNumMutations(Number(e.target.value))}
-            style={{ width: 70 }}
+      {mode === 'mutate' && (
+        <div className="box section-card">
+          <h2 className="section-title">🧬 Point Mutate Aptamer</h2>
+          <div className="note">
+            <b>Note:</b> Mutation is random; try 2–3 runs or tweak parameters if you don’t see results.
+          </div>
+          <textarea
+            value={aptamerInput}
+            onChange={e => setAptamerInput(e.target.value)}
+            placeholder="Enter an aptamer sequence (20–80 nts)"
+            className="input-box centered"
           />
-        </label>
-      </div>
-      <button className="generate-btn" onClick={handlePointMutate} disabled={loading} style={{ marginTop: 10 }}>
-        {loading ? 'Mutating…' : 'Mutate'}
-      </button>
-    </div>
-  </>
-)}
-
+          <div className="filter-row">
+            <label>Number of point mutations<br />
+              <input type="number" min="1" max="100" value={numMutations} onChange={e => setNumMutations(Number(e.target.value))} />
+            </label>
+          </div>
+          <div className="actions-bar">
+            <button className="cta-btn" onClick={handlePointMutate} disabled={loading}>
+              {loading ? 'Mutating…' : 'Mutate'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {aptamers.length > 0 && (
-        <div className="result-section" style={{ marginTop: 20 }}>
-          <div style={{ marginBottom: 10 }}>
-            <label>Sort By: </label>
-            <select
-              value={sortKey || ""}
-              onChange={e => onSortChange(e.target.value)}
-              style={{ minWidth: 150, marginLeft: 6 }}
-            >
+        <div className="result-section section-card">
+          <div className="actions-bar" style={{ justifyContent: 'flex-end', gap: 8 }}>
+            <label>Sort By:&nbsp;</label>
+            <select value={sortKey || ""} onChange={e => onSortChange(e.target.value)} className="select">
               <option value="">-- None --</option>
               <option value="length">Length</option>
               <option value="gc_content">GC %</option>
@@ -403,11 +331,12 @@ function Advanced() {
               <option value="sequence">Sequence</option>
             </select>
             {sortKey && (
-              <button onClick={() => onSortChange(sortKey)} style={{ marginLeft: 8 }}>
+              <button className="ghost-btn" onClick={() => onSortChange(sortKey)}>
                 {sortOrder === 'asc' ? '▲' : '▼'}
               </button>
             )}
           </div>
+
           <div className="table-scroll">
             <table className="results-table">
               <thead>
@@ -415,20 +344,20 @@ function Advanced() {
                   <th>#</th>
                   <th>Sequence</th>
                   <th onClick={() => onSortChange('length')} style={{ cursor: 'pointer' }}>
-                    Length{renderSortArrow('length', sortKey, sortOrder)}
+                    Length{sortKey === 'length' ? (sortOrder === 'asc' ? ' ▲' : ' ▼') : ''}
                   </th>
                   <th onClick={() => onSortChange('gc_content')} style={{ cursor: 'pointer' }}>
-                    GC %{renderSortArrow('gc_content', sortKey, sortOrder)}
+                    GC %{sortKey === 'gc_content' ? (sortOrder === 'asc' ? ' ▲' : ' ▼') : ''}
                   </th>
                   <th style={{ minWidth: "160px" }}>Structure</th>
                   <th onClick={() => onSortChange('mfe')} style={{ cursor: 'pointer' }}>
-                    MFE{renderSortArrow('mfe', sortKey, sortOrder)}
+                    MFE{sortKey === 'mfe' ? (sortOrder === 'asc' ? ' ▲' : ' ▼') : ''}
                   </th>
                   <th onClick={() => onSortChange('tm')} style={{ cursor: 'pointer' }}>
-                    Tm{renderSortArrow('tm', sortKey, sortOrder)}
+                    Tm{sortKey === 'tm' ? (sortOrder === 'asc' ? ' ▲' : ' ▼') : ''}
                   </th>
                   <th onClick={() => onSortChange('kd')} style={{ cursor: 'pointer' }}>
-                    Kd (nM){renderSortArrow('kd', sortKey, sortOrder)}
+                    Kd (nM){sortKey === 'kd' ? (sortOrder === 'asc' ? ' ▲' : ' ▼') : ''}
                   </th>
                 </tr>
               </thead>
@@ -436,31 +365,17 @@ function Advanced() {
                 {sortedAptamers.map((apt, idx) => (
                   <tr key={idx}>
                     <td>{idx + 1}</td>
-                    <td style={{ wordBreak: "break-all" }}>{apt.sequence}</td>
+                    <td className="text-left" style={{ wordBreak: "break-all" }}>{apt.sequence}</td>
                     <td>{apt.length}</td>
                     <td>{apt.gc_content}</td>
-                    <td
-                      style={{
-                        fontFamily: 'monospace',
-                        fontSize: '0.95em',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 6,
-                      }}
-                    >
+                    <td style={{ fontFamily: 'monospace', fontSize: '0.95em' }}>
                       <span title={apt.structure}>{apt.structure}</span>
                       <button
                         onClick={() => handleShowStructure(apt.sequence, apt.structure)}
                         title="Show graphical structure"
                         disabled={svgLoading}
-                        style={{
-                          fontSize: '1.1em',
-                          background: '#f1f8ee',
-                          border: '1.2px solid #85e7c2',
-                          borderRadius: 6,
-                          padding: '0.06em 0.38em',
-                          cursor: svgLoading ? 'not-allowed' : 'pointer',
-                        }}
+                        className="pill-btn"
+                        style={{ marginLeft: 6 }}
                       >
                         🧬
                       </button>
@@ -473,11 +388,11 @@ function Advanced() {
               </tbody>
             </table>
           </div>
-          <div className="export-controls" style={{ marginTop: 10 }}>
-            <button onClick={() => copyToClipboard(sortedAptamers)}>Copy</button>
-            <button onClick={() => downloadData(sortedAptamers, 'aptamers.txt', 'text/plain')}>Download TXT</button>
-            <button onClick={() => downloadData(sortedAptamers, 'aptamers.csv', 'text/csv')}>Download CSV</button>
-            <button onClick={() => downloadData(sortedAptamers, 'aptamers.xls', 'application/vnd.ms-excel')}>Download XLS</button>
+
+          <div className="export-controls actions-bar">
+            <button className="ghost-btn" onClick={() => navigator.clipboard.writeText(toCSV(sortedAptamers)).then(() => toast.success('Copied CSV to clipboard!')).catch(() => toast.error('Copy failed'))}>Copy CSV</button>
+            <button className="ghost-btn" onClick={() => downloadCSV(sortedAptamers, 'aptamers.csv')}>Download CSV</button>
+            <button className="ghost-btn" onClick={() => downloadXLSX(sortedAptamers, 'aptamers.xlsx')}>Download XLSX</button>
           </div>
         </div>
       )}
@@ -490,57 +405,11 @@ function Advanced() {
           aria-label="RNA secondary structure visualization modal"
           tabIndex={-1}
           onClick={() => setSvgModalOpen(false)}
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100vw',
-            height: '100vh',
-            background: 'rgba(0,0,0,0.4)',
-            zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 20,
-            boxSizing: 'border-box',
-            overflowY: 'auto',
-            cursor: 'pointer',
-          }}
+          className="modal-backdrop"
         >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: '#fff',
-              borderRadius: 12,
-              maxWidth: '90vw',
-              maxHeight: '90vh',
-              padding: 20,
-              boxShadow: '0 10px 28px rgba(0,0,0,0.3)',
-              overflow: 'auto',
-              cursor: 'default',
-              position: 'relative',
-            }}
-          >
-            <button
-              onClick={() => setSvgModalOpen(false)}
-              aria-label="Close modal"
-              style={{
-                float: 'right',
-                fontSize: 24,
-                fontWeight: 'bold',
-                border: 'none',
-                background: 'none',
-                cursor: 'pointer',
-                color: '#a00',
-                marginBottom: 10,
-              }}
-            >
-              ×
-            </button>
-            <div
-              style={{ width: '100%', height: 'auto', maxHeight: '80vh', clear: 'both' }}
-              dangerouslySetInnerHTML={{ __html: svgContent }}
-            />
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <button className="close-x" onClick={() => setSvgModalOpen(false)} aria-label="Close modal">×</button>
+            <div dangerouslySetInnerHTML={{ __html: svgContent }} />
           </div>
         </div>
       )}
