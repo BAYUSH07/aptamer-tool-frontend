@@ -1,3 +1,4 @@
+// App.js
 import React, { useState } from 'react';
 import './index.css';
 import './App.css';
@@ -10,9 +11,75 @@ import Footer from './Footer';
 import Advanced from './Advanced';
 import logo from './PAWSLOGO.png';
 
-// ✅ Backend API URL from Netlify Env Variable
+// Backend API URL
 const API_BASE = process.env.REACT_APP_API_URL;
 
+// --- Export helpers (CSV/XLSX) ---
+const XLSX_CDN = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
+
+const ensureXLSX = () =>
+  new Promise((resolve, reject) => {
+    if (window.XLSX) return resolve(window.XLSX);
+    const s = document.createElement('script');
+    s.src = XLSX_CDN;
+    s.onload = () => resolve(window.XLSX);
+    s.onerror = () => reject(new Error('Failed to load XLSX library'));
+    document.body.appendChild(s);
+  });
+
+const columns = [
+  { key: 'sequence', label: 'Sequence' },
+  { key: 'length', label: 'Length' },
+  { key: 'gc_content', label: 'GC %' },
+  { key: 'structure', label: 'Structure' },
+  { key: 'mfe', label: 'MFE (kcal/mol)' },
+  { key: 'tm', label: 'Tm' },
+  { key: 'kd', label: 'Kd (nM)' },
+];
+
+const toCSV = (rows) => {
+  const head = columns.map(c => `"${c.label}"`).join(',');
+  const body = rows.map(r =>
+    columns.map(c => {
+      const v = r[c.key] ?? '';
+      return `"${String(v).replace(/"/g, '""')}"`;
+    }).join(',')
+  ).join('\n');
+  return `${head}\n${body}`;
+};
+
+const downloadBlob = (content, filename, type) => {
+  const blob = new Blob([content], { type });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(link.href);
+};
+
+const downloadCSV = (data, filename = 'aptamers.csv') => {
+  downloadBlob(toCSV(data), filename, 'text/csv;charset=utf-8;');
+};
+
+const downloadXLSX = async (data, filename = 'aptamers.xlsx') => {
+  try {
+    const XLSX = await ensureXLSX();
+    const flat = data.map(r => {
+      const o = {};
+      columns.forEach(c => { o[c.label] = r[c.key] ?? ''; });
+      return o;
+    });
+    const ws = XLSX.utils.json_to_sheet(flat);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Aptamers');
+    XLSX.writeFile(wb, filename);
+  } catch (e) {
+    toast.error('XLSX export failed. Using CSV instead.');
+    downloadCSV(data, filename.replace(/\.xlsx$/i, '.csv'));
+  }
+};
+
+// --- Component ---
 function App() {
   // Inputs
   const [fastaInput, setFastaInput] = useState('');
@@ -50,11 +117,11 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fasta_sequence: fastaInput, num_aptamers: 10 }),
       });
-      if (!response.ok) throw new Error(response.statusText);
+      if (!response.ok) throw new Error(await response.text());
       const data = await response.json();
       setGeneratedAptamers(data.aptamers || []);
       toast.success(`${(data.aptamers || []).length} aptamers generated ✅`);
-    } catch {
+    } catch (e) {
       toast.error('❌ Failed to generate aptamers');
     } finally {
       setLoadingGenerate(false);
@@ -70,7 +137,7 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ aptamer: aptamerInput, num_mutations: 10 }),
       });
-      if (!response.ok) throw new Error(response.statusText);
+      if (!response.ok) throw new Error(await response.text());
       const data = await response.json();
       setMutatedAptamers(data.mutations || []);
       toast.success(`${(data.mutations || []).length} mutations created ✅`);
@@ -82,30 +149,6 @@ function App() {
   };
 
   // --- Helpers ---
-  const formatForExcel = (data) => {
-    let rows = ['#\tSequence\tLength\tGC %\tStructure\tMFE\tTm\tKd (nM)'];
-    data.forEach((apt, idx) => {
-      rows.push(
-        `${idx + 1}\t${apt.sequence}\t${apt.length}\t${apt.gc_content}\t${apt.structure || ''}\t${apt.mfe || ''}\t${apt.tm || ''}\t${apt.kd || ''}`
-      );
-    });
-    return rows.join('\n');
-  };
-
-  const copyToClipboard = (data) => {
-    navigator.clipboard.writeText(formatForExcel(data))
-      .then(() => toast.success('Copied to clipboard!'))
-      .catch(() => toast.error('Failed to copy to clipboard.'));
-  };
-
-  const downloadData = (data, filename) => {
-    const blob = new Blob([formatForExcel(data)], { type: 'text/plain' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = filename;
-    link.click();
-  };
-
   const parseSortableValue = (value, type) => {
     if (value == null || value === 'N/A') return NaN;
     if (['mfe', 'kd'].includes(type)) {
@@ -128,7 +171,9 @@ function App() {
       if (isNaN(av) && !isNaN(bv)) return 1;
       if (!isNaN(av) && isNaN(bv)) return -1;
       if (isNaN(av) && isNaN(bv)) return 0;
-      return type !== 'string' ? (order === 'asc' ? av - bv : bv - av) : (order === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av));
+      return type !== 'string'
+        ? (order === 'asc' ? av - bv : bv - av)
+        : (order === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av));
     });
   };
 
@@ -136,12 +181,10 @@ function App() {
     if (genSortKey === field) setGenSortOrder(genSortOrder === 'asc' ? 'desc' : 'asc');
     else { setGenSortKey(field); setGenSortOrder('asc'); }
   };
-
   const onMutSortChange = (field) => {
     if (mutSortKey === field) setMutSortOrder(mutSortOrder === 'asc' ? 'desc' : 'asc');
     else { setMutSortKey(field); setMutSortOrder('asc'); }
   };
-
   const renderSortArrow = (key, active, order) => key === active ? (order === 'asc' ? ' ▲' : ' ▼') : null;
 
   const sortedGenerated = sortAptamers(generatedAptamers, genSortKey, genSortOrder);
@@ -176,7 +219,6 @@ function App() {
     link.click();
   };
 
-  // ✅ Reset Function — NOW USED in UI
   const handleReset = () => {
     if (window.confirm('Are you sure you want to reset everything?')) {
       setFastaInput('');
@@ -206,100 +248,147 @@ function App() {
           <Link to="/about">ℹ️ About</Link>
         </nav>
 
-        <div style={{ textAlign: 'center', marginTop: 18 }}>
-          <img src={logo} alt="PAWS" style={{ width: 80, borderRadius: '50%' }} />
-          <h1>PAWS Web Tool</h1>
-          <div style={{ fontSize: '1.1em', color: '#0c56d1' }}>Prediction of Aptamers Without SELEX</div>
+        <div className="hero">
+          <img src={logo} alt="PAWS" className="hero-logo" />
+          <h1 className="hero-title">PAWS Web Tool</h1>
+          <div className="hero-tagline">Prediction of Aptamers Without SELEX</div>
         </div>
 
         <Routes>
           <Route path="/" element={
-            <main style={{ padding: 20 }}>
+            <main>
               {/* Generate Aptamers */}
-              <h2>Generate Aptamers</h2>
-              <textarea value={fastaInput} onChange={e => setFastaInput(e.target.value)}
-                placeholder="Enter FASTA sequence..." rows={4} style={{ width: '80%' }} />
-              <br />
-              <button onClick={generateAptamers} disabled={loadingGenerate}>
-                {loadingGenerate ? 'Generating...' : 'Generate'}
-              </button>
+              <section className="section-card">
+                <h2 className="section-title">Generate Aptamers</h2>
+                <textarea
+                  className="input-box centered"
+                  value={fastaInput}
+                  onChange={e => setFastaInput(e.target.value)}
+                  placeholder="Paste FASTA sequence..."
+                  rows={6}
+                />
+                <div className="actions-bar">
+                  <button className="cta-btn" onClick={generateAptamers} disabled={loadingGenerate}>
+                    {loadingGenerate ? 'Generating…' : 'Generate'}
+                  </button>
+                </div>
 
-              {/* Generated list */}
-              {generatedAptamers.length > 0 && (
-                <>
-                  <h3>Generated Aptamers</h3>
-                  <table><thead><tr>
-                    {['sequence','length','gc_content','mfe','tm','kd'].map(f => (
-                      <th key={f} onClick={() => onGenSortChange(f)} style={{ cursor: 'pointer' }}>
-                        {f.toUpperCase()}{renderSortArrow(f, genSortKey, genSortOrder)}
-                      </th>
-                    ))}
-                    <th>Actions</th>
-                  </tr></thead>
-                  <tbody>
-                    {sortedGenerated.map((apt, i) => (
-                      <tr key={i}>
-                        <td>{apt.sequence}</td><td>{apt.length}</td><td>{apt.gc_content}</td>
-                        <td>{apt.mfe}</td><td>{apt.tm}</td><td>{apt.kd}</td>
-                        <td><button onClick={() => handleShowStructure(apt.sequence, apt.structure)}>View Structure</button></td>
-                      </tr>
-                    ))}
-                  </tbody></table>
-                  <button onClick={() => copyToClipboard(sortedGenerated)}>Copy to Clipboard</button>
-                  <button onClick={() => downloadData(sortedGenerated, 'generated.txt')}>Download TXT</button>
-                </>
-              )}
+                {generatedAptamers.length > 0 && (
+                  <>
+                    <div className="table-scroll">
+                      <table className="results-table">
+                        <thead>
+                          <tr>
+                            {['sequence','length','gc_content','mfe','tm','kd'].map(f => (
+                              <th key={f} onClick={() => onGenSortChange(f)} style={{ cursor: 'pointer' }}>
+                                {f.toUpperCase()}{renderSortArrow(f, genSortKey, genSortOrder)}
+                              </th>
+                            ))}
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sortedGenerated.map((apt, i) => (
+                            <tr key={i}>
+                              <td className="text-left">{apt.sequence}</td>
+                              <td>{apt.length}</td>
+                              <td>{apt.gc_content}</td>
+                              <td>{apt.mfe}</td>
+                              <td>{apt.tm}</td>
+                              <td>{apt.kd}</td>
+                              <td>
+                                <button className="ghost-btn" onClick={() => handleShowStructure(apt.sequence, apt.structure)}>
+                                  View Structure
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div className="export-controls actions-bar">
+                      <button className="ghost-btn" onClick={() => navigator.clipboard.writeText(toCSV(sortedGenerated)).then(() => toast.success('Copied CSV to clipboard!')).catch(() => toast.error('Copy failed'))}>Copy CSV</button>
+                      <button className="ghost-btn" onClick={() => downloadCSV(sortedGenerated, 'generated.csv')}>Download CSV</button>
+                      <button className="ghost-btn" onClick={() => downloadXLSX(sortedGenerated, 'generated.xlsx')}>Download XLSX</button>
+                    </div>
+                  </>
+                )}
+              </section>
 
               {/* Mutate Aptamer */}
-              <h2 style={{ marginTop: 30 }}>Mutate Aptamer</h2>
-              <textarea value={aptamerInput} onChange={e => setAptamerInput(e.target.value)}
-                placeholder="Enter aptamer..." rows={2} style={{ width: '80%' }} />
-              <br />
-              <button onClick={mutateAptamer} disabled={loadingMutate}>
-                {loadingMutate ? 'Mutating...' : 'Mutate'}
-              </button>
+              <section className="section-card">
+                <h2 className="section-title">Mutate Aptamer</h2>
+                <textarea
+                  className="input-box centered"
+                  value={aptamerInput}
+                  onChange={e => setAptamerInput(e.target.value)}
+                  placeholder="Enter aptamer sequence..."
+                  rows={4}
+                />
+                <div className="actions-bar">
+                  <button className="cta-btn" onClick={mutateAptamer} disabled={loadingMutate}>
+                    {loadingMutate ? 'Mutating…' : 'Mutate'}
+                  </button>
+                </div>
 
-              {mutatedAptamers.length > 0 && (
-                <>
-                  <h3>Mutated Aptamers</h3>
-                  <table><thead><tr>
-                    {['sequence','length','gc_content','mfe','tm','kd'].map(f => (
-                      <th key={f} onClick={() => onMutSortChange(f)} style={{ cursor: 'pointer' }}>
-                        {f.toUpperCase()}{renderSortArrow(f, mutSortKey, mutSortOrder)}
-                      </th>
-                    ))}
-                    <th>Actions</th>
-                  </tr></thead>
-                  <tbody>
-                    {sortedMutated.map((apt, i) => (
-                      <tr key={i}>
-                        <td>{apt.sequence}</td><td>{apt.length}</td><td>{apt.gc_content}</td>
-                        <td>{apt.mfe}</td><td>{apt.tm}</td><td>{apt.kd}</td>
-                        <td><button onClick={() => handleShowStructure(apt.sequence, apt.structure)}>View Structure</button></td>
-                      </tr>
-                    ))}
-                  </tbody></table>
-                  <button onClick={() => copyToClipboard(sortedMutated)}>Copy to Clipboard</button>
-                  <button onClick={() => downloadData(sortedMutated, 'mutated.txt')}>Download TXT</button>
-                </>
-              )}
+                {mutatedAptamers.length > 0 && (
+                  <>
+                    <div className="table-scroll">
+                      <table className="results-table">
+                        <thead>
+                          <tr>
+                            {['sequence','length','gc_content','mfe','tm','kd'].map(f => (
+                              <th key={f} onClick={() => onMutSortChange(f)} style={{ cursor: 'pointer' }}>
+                                {f.toUpperCase()}{renderSortArrow(f, mutSortKey, mutSortOrder)}
+                              </th>
+                            ))}
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sortedMutated.map((apt, i) => (
+                            <tr key={i}>
+                              <td className="text-left">{apt.sequence}</td>
+                              <td>{apt.length}</td>
+                              <td>{apt.gc_content}</td>
+                              <td>{apt.mfe}</td>
+                              <td>{apt.tm}</td>
+                              <td>{apt.kd}</td>
+                              <td>
+                                <button className="ghost-btn" onClick={() => handleShowStructure(apt.sequence, apt.structure)}>
+                                  View Structure
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
 
-              {/* ✅ Added Reset Button */}
-              <div style={{ marginTop: 20 }}>
-                <button onClick={handleReset} style={{ backgroundColor: 'red', color: 'white' }}>Reset All</button>
+                    <div className="export-controls actions-bar">
+                      <button className="ghost-btn" onClick={() => navigator.clipboard.writeText(toCSV(sortedMutated)).then(() => toast.success('Copied CSV to clipboard!')).catch(() => toast.error('Copy failed'))}>Copy CSV</button>
+                      <button className="ghost-btn" onClick={() => downloadCSV(sortedMutated, 'mutated.csv')}>Download CSV</button>
+                      <button className="ghost-btn" onClick={() => downloadXLSX(sortedMutated, 'mutated.xlsx')}>Download XLSX</button>
+                    </div>
+                  </>
+                )}
+              </section>
+
+              <div className="actions-bar">
+                <button className="danger-btn" onClick={handleReset}>Reset All</button>
               </div>
 
               {/* SVG Modal */}
               {svgModalOpen && (
-                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                  <div style={{ background: '#fff', padding: '1rem', borderRadius: '8px', position: 'relative' }}>
+                <div className="modal-backdrop" onClick={() => setSvgModalOpen(false)}>
+                  <div className="modal" onClick={e => e.stopPropagation()}>
                     {svgLoading ? <p>Loading...</p> : <div dangerouslySetInnerHTML={{ __html: svgContent }} />}
-                    {!svgLoading && <button onClick={downloadSvgFile}>Download SVG</button>}
-                    <button onClick={() => setSvgModalOpen(false)} style={{ position: 'absolute', top: '8px', right: '8px' }}>Close</button>
+                    {!svgLoading && <button className="ghost-btn" onClick={downloadSvgFile}>Download SVG</button>}
+                    <button className="close-x" onClick={() => setSvgModalOpen(false)}>×</button>
                   </div>
                 </div>
               )}
-
             </main>
           } />
           <Route path="/advanced" element={<Advanced />} />
