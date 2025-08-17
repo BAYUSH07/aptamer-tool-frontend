@@ -394,6 +394,12 @@ function App() {
           <Route path="/advanced" element={<Advanced />} />
           <Route path="/about" element={<About />} />
         </Routes>
+        <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
+  <small style={{ fontSize: '0.8em', color: '#666' }}>
+    If the tool does not respond immediately after clicking <b>Generate</b>, 
+    please allow up to 2 minutes for the server to start, then refresh the page and try again.
+  </small>
+</div>
 
         <Footer />
       </div>
