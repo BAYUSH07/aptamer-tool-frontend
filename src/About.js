@@ -1,18 +1,53 @@
 // src/About.js
 import React from 'react';
 import logo from './PAWSLOGO.png';
-import ayushPhoto from './ayushbhoj.png';          // Make sure filename matches exactly
+import ayushPhoto from './ayushbhoj.png';
 import aadityaPhoto from './Aaditya.jpeg';
 import pranjalPhoto from './Pranjal.jpg';
 import sanketPhoto from './DrSanketHQ.png';
 import sandeepanPhoto from './sandeepan.png';
 
 const team = [
-  { name: "Ayush Bhoj", role: "Project Student", photo: ayushPhoto },
-  { name: "Aaditya Shinde", role: "Project Student", photo: aadityaPhoto },
-  { name: "Pranjal Kulkarni", role: "Project Student", photo: pranjalPhoto },
-  { name: "Dr. Sanket Bapat", role: "Mentor", photo: sanketPhoto },
-  { name: "Dr. Sandeepan Mukherjee", role: "Mentor", photo: sandeepanPhoto },
+  { 
+    name: "Ayush Bhoj", 
+    role: "Project Student", 
+    photo: ayushPhoto,
+    linkedin: "https://www.linkedin.com/in/ayush-bhoj-/",   // 🔗 Replace with Ayush's LinkedIn URL
+    scholar: "https://iubmb.onlinelibrary.wiley.com/doi/10.1002/bab.70023",    // 🔗 Replace with Ayush's Scholar URL
+    email: "ayushbhoj208@gmail.com" // ✉ Replace with Ayush's email
+  },
+  { 
+    name: "Aaditya Shinde", 
+    role: "Project Student", 
+    photo: aadityaPhoto,
+    linkedin: "https://www.linkedin.com/in/aaditya-shinde-9b29a5308/",
+    scholar: "#",
+    email: "aadityashinday0710@gmail.com"
+  },
+  { 
+    name: "Pranjal Kulkarni", 
+    role: "Project Student", 
+    photo: pranjalPhoto,
+    linkedin: "https://www.linkedin.com/in/pranjal-kulkarni-a2825324a/",
+    scholar: "#",
+    email: "pranjalkk231202@gmail.com"
+  },
+  { 
+    name: "Dr. Sanket Bapat", 
+    role: "Mentor", 
+    photo: sanketPhoto,
+    linkedin: "https://www.linkedin.com/in/drsanketbapat/",
+    scholar: "https://scholar.google.com/citations?user=iLSH9-8AAAAJ&hl=en&oi=ao",
+    email: "sanket.bapat@mituniversity.edu.in"
+  },
+  { 
+    name: "Dr. Sandeepan Mukherjee", 
+    role: "Mentor", 
+    photo: sandeepanPhoto,
+    linkedin: "https://www.linkedin.com/in/sandeepan-mukherjee-33b14512/",
+    scholar: "https://scholar.google.com/citations?hl=en&user=zAGYr7UAAAAJ",
+    email: "sandeepan.mukherjee@mituniversity.edu.in.com"
+  },
 ];
 
 const About = () => (
@@ -51,7 +86,7 @@ const About = () => (
             key={idx}
             style={{
               textAlign: 'center',
-              width: 160,
+              width: 190,
               background: 'rgba(255,255,255,0.9)',
               borderRadius: 14,
               padding: '1em',
@@ -72,6 +107,23 @@ const About = () => (
             />
             <div style={{ fontWeight: 700, fontSize: '1.05em' }}>{member.name}</div>
             <div style={{ fontSize: '0.92em', color: '#444' }}>{member.role}</div>
+            
+            {/* Email */}
+            <div style={{ fontSize: '0.9em', marginTop: 4, color: '#333' }}>
+              <a href={`mailto:${member.email}`} style={{ color: '#007bff', textDecoration: 'none' }}>
+                {member.email}
+              </a>
+            </div>
+
+            {/* Links */}
+            <div style={{ marginTop: 6, fontSize: '0.9em' }}>
+              <a href={member.linkedin} target="_blank" rel="noopener noreferrer" style={{ color: '#0c56d1', marginRight: 10 }}>
+                LinkedIn
+              </a>
+              <a href={member.scholar} target="_blank" rel="noopener noreferrer" style={{ color: '#0c56d1' }}>
+                Google Scholar
+              </a>
+            </div>
           </div>
         ))}
       </div>
