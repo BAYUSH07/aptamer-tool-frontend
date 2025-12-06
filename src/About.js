@@ -1,7 +1,7 @@
 // src/About.js
 import React from 'react';
 import logo from './PAWSLOGO.png';
-import ayushPhoto from './ayushbhoj.png';
+import ayushPhoto from './Ayush11.png';
 import aadityaPhoto from './Aaditya.jpeg';
 import pranjalPhoto from './Pranjal.jpg';
 import sanketPhoto from './DrSanketHQ.png';
@@ -167,3 +167,4 @@ const About = () => (
 );
 
 export default About;
+
